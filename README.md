@@ -1,20 +1,16 @@
 # Hand sign calculator
 You can use the following prompt to generate the Hand sign calculator index.html:
 
-Help me build a cool AI Hand-Sign Calculator using Teachable Machine Pose! 
+Hey Gemini! I want to build a super cool "Direct Sign AI Calculator" that I can run on my iPad browser using Teachable Machine Pose. 
 
-I want to create a single 'index.html' file that runs on my iPad's web browser. It needs to show my camera, recognize my poses, and do math based on my body signs.
+Can you write me a complete, single 'index.html' file that has everything inside it? Here is exactly what I need it to do:
 
-Please write the complete, full 'index.html' code with these exact features:
+1. A beautiful, glassmorphism dark-themed UI with a giant calculator screen at the top and a box below it showing my webcam canvas.
+2. Mirror the webcam canvas completely so that when I stand in front of my iPad, it feels like a real mirror.
+3. Put a "Kids Zone" right at the top of the script section where I can easily paste my Teachable Machine URL. 
+4. In the Kids Zone, make sure you write out code mappings for ALL digits from 0 to 9 using one hand (named "zero","one", "two", "three", "four", "five", "six", "seven", "eight", and "nine"). Also add mappings for "plus", "minus", "multiply", "divide", and "equals".
+5. Create a "wave-to-clear" trick: If I wave my left hand ("waveLeft") and then quickly wave my right hand ("waveRight"), the calculator wipes the screen completely clean!
+6. Build smart calculator logic so I can type HUGE multi-digit numbers just by flashing hand signs one after another (like showing a 1, then showing a 5 to make "15").
+7. When I show the "Equals" sign, make the iPad read the whole equation and the final answer out loud using speech synthesis! But if I try to divide by zero, make the computer say a funny warning about sad llamas crying instead.
 
-1. A beautiful, dark-themed UI with a giant calculator screen (perfect for an iPad) and a box showing my webcam.
-2. Mirror the webcam canvas so it acts like a real mirror when I stand in front of it.
-3. Add a "Kids Zone" at the top of the script where I can easily change the Teachable Machine URL and match my Pose Class Names.
-4. Create a cool "Wave-to-Clear" feature: If the AI detects "WaveLeft" and then "WaveRight" in a row, it clears the screen!
-5. Build calculator logic that lets me:
-   - Enter multi-digit numbers (like showing 1, then 2 to make 12).
-   - Use operators for Plus, Minus, Multiply, and Divide.
-   - Show "Equals" to solve the math equation.
-6. When "Equals" is identified, make the iPad read out the entire equation and the final answer out loud using speech synthesis (for example: "10 divided by 2 equals 5"). If someone tries to divide by zero, have the computer say a funny error warning out loud!
-
-Please make sure the code is completely self-contained in one file, clean, easy to read, and includes fun comments so I can learn how it works!
+Please make sure the code is completely self-contained in one file, super clean, doesn't skip any numbers, and is filled with fun comments so I can learn how the AI tracking works!
