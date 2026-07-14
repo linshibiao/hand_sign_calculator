@@ -1,1 +1,1 @@
-# magicgameshow
+# Hand sign calculator
