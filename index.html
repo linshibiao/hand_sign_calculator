@@ -2,329 +2,513 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🤖 AI Hand-Sign Calculator 🧮</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Pose Calculator</title>
     
-    <!-- Load TensorFlow.js and Teachable Machine Pose library -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@latest/dist/teachablemachine-pose.min.js"></script>
+    <!-- TensorFlow.js and Teachable Machine Pose Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
 
     <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent: #38bdf8;
+            --accent-success: #34d399;
+            --accent-danger: #f87171;
+            --text: #f8fafc;
+        }
+
         body {
-            font-family: 'Arial', sans-serif;
-            text-align: center;
-            background-color: #121212;
-            color: #ffffff;
             margin: 0;
-            padding: 10px;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
             box-sizing: border-box;
         }
 
-        h1 {
-            font-size: 2rem;
-            color: #00ff88;
-            margin: 10px 0;
-            text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        /* Large iPad-Friendly Calculator Screen */
-        #calculator-screen {
-            font-size: 2.8rem;
-            background: #222;
-            padding: 25px;
-            width: 90%;
-            max-width: 500px;
-            margin: 15px auto;
-            border-radius: 15px;
-            border: 4px solid #00ff88;
-            min-height: 70px;
+        header {
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            color: var(--accent);
+            text-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+        }
+
+        /* Giant Calculator Screen */
+        .display-container {
+            background: var(--card-bg);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            text-align: right;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .expression {
+            font-size: 1.5rem;
+            color: #94a3b8;
+            min-height: 2rem;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .result {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--text);
+            word-wrap: break-word;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1px;
             display: flex;
             align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+
+        .status-dot.ready { background: var(--accent-success); }
+        .status-dot.loading { background: #f59e0b; }
+
+        /* Workspace: Camera Side-by-Side with Guide */
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .workspace { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             justify-content: center;
-            word-wrap: break-word;
-            word-break: break-all;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
         }
 
-        /* Control & Camera Containers */
-        #webcam-container {
+        /* Mirrored Video Canvas */
+        #canvas-container {
             position: relative;
-            margin: 15px auto;
-            border: 4px solid #333;
-            border-radius: 15px;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 16px;
             overflow: hidden;
-            width: 250px;
-            height: 250px;
-            background-color: #000;
+            background: #000;
+            aspect-ratio: 4/3;
         }
 
-        /* Mirror the front camera on the iPad so it behaves like a mirror */
-        canvas {
-            transform: scaleX(-1);
-            width: 100% !important;
-            height: 100% !important;
+        #canvas {
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1); /* Crucial: Mirrors the canvas display for an iPad view */
+        }
+
+        .control-panel {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
         .btn {
-            font-size: 1.5rem;
-            padding: 15px 30px;
-            border-radius: 50px;
-            border: none;
-            background: linear-gradient(135deg, #00ff88, #00b3ff);
+            background: var(--accent);
             color: #000;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
-            transition: transform 0.2s;
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-        }
-
-        /* Status label for the active AI Pose */
-        #ai-status {
+            border: none;
+            padding: 15px 30px;
             font-size: 1.2rem;
-            color: #aaa;
-            margin-top: 10px;
-            min-height: 1.5rem;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        .pose-feedback {
+            margin-top: 15px;
+            font-size: 1.4rem;
+            font-weight: 600;
+            text-align: center;
+            color: var(--accent-success);
+            min-height: 2rem;
+        }
+
+        .hint-box {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            line-height: 1.5;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 14px;
+            width: 100%;
+            box-sizing: border-box;
         }
     </style>
 </head>
 <body>
 
-    <h1>🤖 AI Hand-Sign Calculator 🧮</h1>
-    
-    <!-- Giant Screen showing the math calculation -->
-    <div id="calculator-screen">Press Start and Show "0"!</div>
-    
-    <button class="btn" type="button" onclick="init()">Start Camera</button>
-    
-    <div id="webcam-container"></div>
-    <div id="ai-status">AI is sleeping...</div>
+<div class="container">
+    <header>
+        <h1>AI Pose Calculator</h1>
+    </header>
+
+    <!-- Calculator Display Screen -->
+    <div class="display-container">
+        <div class="status-badge">
+            <div id="status-dot" class="status-dot"></div>
+            <span id="status-text">SYSTEM OFFLINE</span>
+        </div>
+        <div id="expression" class="expression"></div>
+        <div id="result" class="result">0</div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+        <!-- Left Side: Camera view -->
+        <div class="panel">
+            <div id="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Side: Controls & Info -->
+        <div class="panel">
+            <div class="control-panel">
+                <button id="start-btn" class="btn" onclick="init()">Start AI Camera</button>
+                <div class="pose-feedback" id="pose-display">Holding Pose: None</div>
+                
+                <div class="hint-box">
+                    <strong>💡 How to use:</strong> Hold your hand sign steadily for 1.5 seconds to register it. 
+                    <br><br>
+                    <strong>👋 Wave to Clear:</strong> Wave your <strong>Left hand</strong> high, then immediately wave your <strong>Right hand</strong> high to instantly clear the math board!
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-    // =========================================================================
-    // 🌟 KIDS ZONE: PASTE YOUR TEACHABLE MACHINE POSE MODEL LINK HERE!
-    // =========================================================================
-    const URL = "YOUR_TEACHABLE_MACHINE_POSE_URL_HERE/"; 
-
-    // Inside this function, match your exact Pose Class Names from Teachable Machine!
-    function processKidsGameLogic(predictionName) {
-        
-        // 1. CLEAR action (Our two-pose motion trick)
-        checkWaveMotion(predictionName);
-
-        // 2. DIGITS: Match Class names "0" through "9"
-        if (!isNaN(predictionName)) {
-            handleCalculatorInput(predictionName); 
-        }
-
-        // 3. OPERATORS: Edit the right side of === to match your TM labels!
-        if (predictionName === "Plus") {
-            handleCalculatorInput("Plus");
-        }
-        if (predictionName === "Minus") {
-            handleCalculatorInput("Minus");
-        }
-        if (predictionName === "Multiply") {
-            handleCalculatorInput("Multiply");
-        }
-        if (predictionName === "Divide") {
-            handleCalculatorInput("Divide");
-        }
-        if (predictionName === "Equals") {
-            handleCalculatorInput("Equals");
-        }
-    }
-    // =========================================================================
-    // END OF KIDS ZONE
-    // =========================================================================
-
-    let model, webcam, ctx, labelContainer, maxPredictions;
+    // ==========================================
+    // ⭐ KIDS ZONE: CUSTOMIZE YOUR MODEL HERE ⭐
+    // ==========================================
+    // Paste your Teachable Machine Pose export link down here:
+    const URL = "https://teachablemachine.withgoogle.com/models/YOUR_MODEL_ID/"; 
     
-    // Calculator Storage
-    let currentInput = "";
-    let num1 = null;
-    let operator = null;
+    // Exact text labels from your Teachable Machine Poses
+    const POSES = {
+        NUM_1: "One",
+        NUM_2: "Two",
+        NUM_3: "Three",
+        NUM_4: "Four",
+        NUM_5: "Five",
+        PLUS: "Plus",
+        MINUS: "Minus",
+        MULTIPLY: "Multiply",
+        DIVIDE: "Divide",
+        EQUALS: "Equals",
+        WAVE_LEFT: "WaveLeft",
+        WAVE_RIGHT: "WaveRight"
+    };
+    
+    // Timing configurations
+    const HOLD_THRESHOLD = 1500; // How long (in milliseconds) you have to freeze in position to select it
+
+    // ==========================================
+    // APP IMPLEMENTATION LOGIC
+    // ==========================================
+    let model, webcam, ctx, labelContainer, maxPredictions;
+    let currentExpression = "";
+    let currentNumberBuffer = "";
+    
+    // Detection states
     let lastActivePose = "";
+    let poseStartTime = 0;
+    let lastRegisteredPose = "";
+    
+    // Wave-to-clear sequence tracking
+    let waveLeftDetected = false;
+    let waveLeftTime = 0;
 
-    // Wave-to-Clear Memory Setup
-    let waveStage = 0; 
-    function checkWaveMotion(poseName) {
-        // If they tilt left...
-        if (poseName === "WaveLeft") {
-            waveStage = 1;
-        } 
-        // ...and then tilt right, clear the screen!
-        else if (poseName === "WaveRight" && waveStage === 1) {
-            waveStage = 0; 
-            handleCalculatorInput("Clear");
-            speakFeedback("Cleared!");
-        }
-    }
+    const displayExpression = document.getElementById("expression");
+    const displayResult = document.getElementById("result");
+    const poseDisplay = document.getElementById("pose-display");
+    const statusDot = document.getElementById("status-dot");
+    const statusText = document.getElementById("status-text");
 
-    // Initialize the Teachable Machine Pose model
+    // Init function called by button
     async function init() {
-        const statusLabel = document.getElementById("ai-status");
-        statusLabel.innerText = "Loading AI Model...";
-        
-        try {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
+        if (URL.includes("YOUR_MODEL_ID")) {
+            alert("Oops! You need to replace 'YOUR_MODEL_ID' in the Kids Zone section with your real Teachable Machine URL model link!");
+            return;
+        }
 
+        document.getElementById("start-btn").style.display = "none";
+        statusDot.className = "status-dot loading";
+        statusText.innerText = "LOADING MODEL...";
+
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        try {
             model = await tmPose.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            // WebCam Setup (Mirrored for natural physical feedback)
-            const size = 250;
-            const flip = true;
-            webcam = new tmPose.Webcam(size, size, flip);
-            await webcam.setup(); // Requests camera permission
+            // Setup Webcam (Optimized for iPad aspect ratios)
+            const size = 400;
+            const flip = true; 
+            webcam = new tmPose.Webcam(size, size * 0.75, flip); 
+            await webcam.setup(); 
             await webcam.play();
             
-            document.getElementById("webcam-container").innerHTML = "";
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-            
-            statusLabel.innerText = "AI is looking!";
             window.requestAnimationFrame(loop);
+
+            // Hook canvas elements
+            const canvas = document.getElementById("canvas");
+            canvas.width = size;
+            canvas.height = size * 0.75;
+            ctx = canvas.getContext("2d");
+
+            statusDot.className = "status-dot ready";
+            statusText.innerText = "AI ONLINE";
+            speak("AI System Activated. Ready for math!");
         } catch (error) {
-            statusLabel.innerText = "Error loading model. Check link!";
             console.error(error);
+            alert("Error loading the webcam or model. Please check app permissions or your URL path.");
+            statusDot.className = "status-dot";
+            statusText.innerText = "ERROR LOADING";
         }
     }
 
     async function loop(timestamp) {
-        webcam.update(); // Update webcam frames
+        webcam.update(); 
         await predict();
         window.requestAnimationFrame(loop);
     }
 
     async function predict() {
-        // Run webcam framework through the model coordinates
-        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
-        const prediction = await model.predict(posenetOutput);
+        // Prediction 2 outputs poses and skeletal keypoint data
+        const { pose, predictions } = await model.predict(webcam.canvas);
 
-        let bestPrediction = { className: "", probability: 0 };
+        // Find the pose with highest confidence percentage
+        let highestPrediction = { className: "", probability: 0 };
         for (let i = 0; i < maxPredictions; i++) {
-            if (prediction[i].probability > bestPrediction.probability) {
-                bestPrediction = prediction[i];
+            if (predictions[i].probability > highestPrediction.probability) {
+                highestPrediction = predictions[i];
             }
         }
 
-        const statusLabel = document.getElementById("ai-status");
-        
-        // Only register if AI is highly confident (95%+)
-        if (bestPrediction.probability > 0.95) {
-            statusLabel.innerText = `AI Sees: ${bestPrediction.className} (Confident!)`;
-            
-            // To prevent input spamming, only trigger once until user switches pose
-            if (bestPrediction.className !== lastActivePose) {
-                lastActivePose = bestPrediction.className;
-                processKidsGameLogic(bestPrediction.className);
-            }
-        } else if (bestPrediction.probability < 0.60) {
-            // User put hands down or changed pose, allow next input
-            lastActivePose = "";
-            statusLabel.innerText = "AI is looking...";
+        // Only register poses with a high certainty threshold (>85%)
+        if (highestPrediction.probability > 0.85) {
+            handlePoseTiming(highestPrediction.className);
+        } else {
+            handlePoseTiming("Background"); // Fallback if pose isn't completely obvious
         }
+
+        // Drawing skeleton lines
+        drawPose(pose);
     }
 
-    // Handles the core calculator display processing
-    function handleCalculatorInput(action) {
-        const screen = document.getElementById("calculator-screen");
+    function handlePoseTiming(className) {
+        const now = Date.now();
 
-        if (action === "Clear") {
-            currentInput = "";
-            num1 = null;
-            operator = null;
-            screen.innerText = "0";
+        if (className === "Background") {
+            poseDisplay.innerText = "Holding Pose: None";
+            lastActivePose = "";
             return;
         }
 
-        // Build multi-digit numbers (like "1" -> "12" -> "125")
-        if (!isNaN(action)) {
-            currentInput += action;
-            speakFeedback(action);
-
-            if (num1 === null) {
-                screen.innerText = currentInput;
-            } else {
-                screen.innerText = `${num1} ${operator} ${currentInput}`;
-            }
-        } 
-        
-        // Handle Operator Input (+, -, *, /)
-        else if (action === "Plus" || action === "Minus" || action === "Multiply" || action === "Divide") {
-            if (currentInput !== "") {
-                num1 = parseFloat(currentInput);
-                currentInput = "";
-            }
-            if (num1 !== null) {
-                operator = action === "Plus" ? "+" : action === "Minus" ? "-" : action === "Multiply" ? "×" : "÷";
-                screen.innerText = `${num1} ${operator}`;
-                speakFeedback(action);
-            }
-        } 
-        
-        // Solve equation using "=" sign
-        else if (action === "Equals") {
-            if (num1 !== null && operator !== null && currentInput !== "") {
-                let num2 = parseFloat(currentInput);
-                let result = 0;
-                let spokenOperator = "";
-
-                if (operator === "+") {
-                    result = num1 + num2;
-                    spokenOperator = "plus";
-                } else if (operator === "-") {
-                    result = num1 - num2;
-                    spokenOperator = "minus";
-                } else if (operator === "×") {
-                    result = num1 * num2;
-                    spokenOperator = "times";
-                } else if (operator === "÷") {
-                    result = num2 !== 0 ? (num1 / num2) : "Error";
-                    spokenOperator = "divided by";
-                }
-
-                // Format decimals cleanly for float division
-                if (typeof result === "number" && !Number.isInteger(result)) {
-                    result = parseFloat(result.toFixed(2));
-                }
-
-                // Update physical display
-                screen.innerText = `${num1} ${operator} ${num2} = ${result}`;
-                
-                // Speak out the entire mathematical formula!
-                if (result === "Error") {
-                    speakFeedback(`${num1} ${spokenOperator} 0 is an Error. You cannot divide by zero!`);
-                } else {
-                    speakFeedback(`${num1} ${spokenOperator} ${num2} equals ${result}`);
-                }
-
-                // Prime the result to continue calculating with subsequent signs
-                num1 = typeof result === "number" ? result : null;
-                currentInput = "";
-                operator = null;
+        // Check if user is currently freezing a brand new pose pattern
+        if (className !== lastActivePose) {
+            lastActivePose = className;
+            poseStartTime = now;
+            lastRegisteredPose = ""; // resets locked register
+        } else {
+            // User is still holding the exact same pose! Let's check timings
+            const elapsed = now - poseStartTime;
+            const percentageLeft = Math.max(0, Math.ceil((HOLD_THRESHOLD - elapsed) / 1000 * 10) / 10);
+            
+            if (elapsed < HOLD_THRESHOLD) {
+                poseDisplay.innerText = `Holding [${className}]... (${percentageLeft}s)`;
+            } else if (lastRegisteredPose !== className) {
+                // Bingo! Held for 1.5 seconds. Lock it in once.
+                lastRegisteredPose = className; 
+                poseDisplay.innerText = `✅ Registered: ${className}!`;
+                processPoseInput(className);
             }
         }
     }
 
-    // iPad Voice Synthesis to read out calculations!
-    function speakFeedback(text) {
+    function processPoseInput(poseName) {
+        // 1. WAVE TO CLEAR SEQUENCE ENGINE
+        if (poseName === POSES.WAVE_LEFT) {
+            waveLeftDetected = true;
+            waveLeftTime = Date.now();
+            return;
+        }
+        if (poseName === POSES.WAVE_RIGHT) {
+            // Check if WaveLeft happened inside a short window (under 3.5 seconds)
+            if (waveLeftDetected && (Date.now() - waveLeftTime < 3500)) {
+                clearCalculator();
+                speak("Cleared!");
+                return;
+            }
+            waveLeftDetected = false;
+        }
+
+        // 2. MATH CALCULATOR PARSING LOGIC
+        switch(poseName) {
+            case POSES.NUM_1: appendNumber("1"); break;
+            case POSES.NUM_2: appendNumber("2"); break;
+            case POSES.NUM_3: appendNumber("3"); break;
+            case POSES.NUM_4: appendNumber("4"); break;
+            case POSES.NUM_5: appendNumber("5"); break;
+            
+            case POSES.PLUS: appendOperator("+"); break;
+            case POSES.MINUS: appendOperator("-"); break;
+            case POSES.MULTIPLY: appendOperator("*"); break;
+            case POSES.DIVIDE: appendOperator("/"); break;
+            
+            case POSES.EQUALS: evaluateEquation(); break;
+        }
+    }
+
+    function appendNumber(numStr) {
+        currentNumberBuffer += numStr;
+        displayResult.innerText = currentNumberBuffer;
+        speak(numStr);
+    }
+
+    function appendOperator(opStr) {
+        if (currentNumberBuffer === "" && currentExpression === "") return; // Avoid leading error operators
+
+        if (currentNumberBuffer !== "") {
+            currentExpression += " " + currentNumberBuffer + " " + opStr;
+        } else {
+            // Modifies previous operator choice mid-equation sequence if held by mistake
+            currentExpression = currentExpression.slice(0, -1) + opStr;
+        }
+        
+        currentNumberBuffer = "";
+        displayExpression.innerText = currentExpression;
+        displayResult.innerText = "0";
+
+        // Human-friendly audio read-backs
+        let voiceName = opStr;
+        if (opStr === "*") voiceName = "times";
+        if (opStr === "/") voiceName = "divided by";
+        speak(voiceName);
+    }
+
+    function evaluateEquation() {
+        if (currentNumberBuffer === "") return; 
+        
+        let finalEquation = currentExpression + " " + currentNumberBuffer;
+        let cleanExpressionForAudio = finalEquation.replace(/\*/g, " multiplied by ").replace(/\//g, " divided by ");
+        
+        // Division by Zero Safety Net
+        if (finalEquation.includes("/ 0")) {
+            displayResult.innerText = "Error 🦙";
+            speak("Oh no! You tried to divide by zero! That breaks the space time continuum and makes llamas cry.");
+            clearCalculator(false);
+            return;
+        }
+
+        try {
+            // Perform basic math resolution safety parsing evaluation
+            let answer = Function('"use strict";return (' + finalEquation + ')')();
+            
+            // Round nicely if it spits long decimal fractional values
+            if (answer % 1 !== 0) answer = parseFloat(answer.toFixed(4));
+
+            displayExpression.innerText = finalEquation + " =";
+            displayResult.innerText = answer;
+            
+            speak(`${cleanExpressionForAudio} equals ${answer}`);
+            
+            // Prime result for additional chain-math combinations
+            currentNumberBuffer = answer.toString();
+            currentExpression = "";
+        } catch (e) {
+            displayResult.innerText = "Error";
+            speak("Something went wrong calculating that format.");
+            clearCalculator(false);
+        }
+    }
+
+    function clearCalculator(shouldSpeak = true) {
+        currentExpression = "";
+        currentNumberBuffer = "";
+        waveLeftDetected = false;
+        displayExpression.innerText = "";
+        displayResult.innerText = "0";
+    }
+
+    // iPad Native Speech Synthesis Engine
+    function speak(textString) {
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // Stop any current speaking
-            let utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0; // Normal rate so children can hear clearly
+            window.speechSynthesis.cancel(); // Abort anything cutting off current stack
+            const utterance = new SpeechSynthesisUtterance(textString);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.1; // Slightly higher pitch for fun kid atmosphere
             window.speechSynthesis.speak(utterance);
         }
     }
+
+    // Boilerplate skeleton canvas visualizer renderer
+    function drawPose(pose) {
+        if (webcam.canvas) {
+            ctx.drawImage(webcam.canvas, 0, 0);
+            if (pose) {
+                const minPartConfidence = 0.5;
+                tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+            }
+        }
+    }
 </script>
+
 </body>
 </html>
